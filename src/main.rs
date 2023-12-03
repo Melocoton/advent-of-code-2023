@@ -1,11 +1,29 @@
 use std::fs;
 use substring::Substring;
 
+#[derive(Copy, Clone, Debug)]
+struct Pos {
+    x: usize,
+    y: usize
+}
+
+impl Pos {
+    fn is_equal(&self, pos: &Pos) -> bool {
+        if self.x == pos.x && self.y == pos.y {
+            true
+        } else {
+            false
+        }
+    }
+}
+
 fn main() {
     println!("Day One Part One Solution: {:?}", day_one_part_one());
     println!("Day One Part Two Solution: {:?}", day_one_part_two());
     println!("Day Two Part One Solution: {:?}", day_two_part_one().iter().sum::<u32>());
     println!("Day Two Part Two Solution: {:?}", day_two_part_two().iter().sum::<u32>());
+    println!("Day Three Part One Solution: {:?}", day_three_part_one().iter().sum::<u32>());
+    println!("Day Three Part One Solution: {:?}", day_three_part_two().iter().sum::<u32>());
 }
 
 fn day_one_part_one() -> i32 {
@@ -153,4 +171,150 @@ fn day_two_part_two() -> Vec<u32> {
     }
 
     return games;
+}
+
+fn day_three_part_one() -> Vec<u32> {
+    struct PartNumber {
+        digits: Vec<u32>,
+        has_symbol: bool
+    }
+
+    let data = fs::read_to_string("C:\\Users\\oscar\\Documents\\repo\\Rust\\advent-of-code\\src\\input_d3.txt").expect("error reading file");
+    let data_lines = data.split("\n").map(|line| line.trim().chars().collect()).collect::<Vec<Vec<char>>>();
+    let mut numbers: Vec<u32> = vec![];
+
+    for (i, line) in data_lines.iter().enumerate() {
+        let mut part_number: PartNumber = PartNumber { digits: vec![], has_symbol: false };
+        for (j, char) in line.iter().enumerate() {
+            let number = char.to_digit(10);
+            match number {
+                Some(n) => {
+                    part_number.digits.push(n);
+                    if check_adj_symbol(&data_lines, i, j) { part_number.has_symbol = true; }
+                    if j == data_lines[i].len()-1 && part_number.has_symbol {
+                        let final_number = part_number.digits.clone().into_iter().fold(0, |acc, n| (acc*10)+n);
+                        numbers.push(final_number);
+                    }
+                },
+                None => {
+                    if part_number.digits.len() > 0 && part_number.has_symbol {
+                        let final_number = part_number.digits.clone().into_iter().fold(0, |acc, n| (acc*10)+n);
+                        numbers.push(final_number);
+                    }
+                    part_number.digits.clear();
+                    part_number.has_symbol = false;
+                }
+            }
+        }
+    }
+
+    return numbers;
+}
+
+fn day_three_part_two() -> Vec<u32> {
+
+    #[derive(Debug)]
+    struct PartNumber {
+        digits: Vec<u32>,
+        has_symbol: bool,
+        gearpos: Pos
+    }
+
+    #[derive(Debug, Copy, Clone)]
+    struct NumberPos {
+        number: u32,
+        pos: Pos
+    }
+
+    // Slice the file into a vector of lines and each line into a vector of characters
+    let data = fs::read_to_string("C:\\Users\\oscar\\Documents\\repo\\Rust\\advent-of-code\\src\\input_d3.txt").expect("error reading file");
+    let data_lines = data.split("\n").map(|line| line.trim().chars().collect()).collect::<Vec<Vec<char>>>();
+    let mut numbers: Vec<u32> = vec![];
+    let mut numbers_pos: Vec<NumberPos> = vec![]; // Positions of al the numbers with adjacent gears found
+    let mut gears_pos: Vec<Pos> = vec![]; // Positions of all the gears found
+
+    for (i, line) in data_lines.iter().enumerate() {
+        // var used to temporarily store the digits and symbol as we scan a line
+        let mut part_number: PartNumber = PartNumber { digits: vec![], has_symbol: false, gearpos: Pos{x: 0, y: 0} };
+        for (j, char) in line.iter().enumerate() {
+            // Search the vector for characters that are digits
+            let number = char.to_digit(10);
+            match number {
+                Some(n) => {
+                    // If the character is a digit push it to the current number memory
+                    part_number.digits.push(n);
+                    // Check if there is a gear adjacent to the number, if true, activate the has_symbol flag and store the gear position in the number
+                    // if its the first time the gear is found also store the gear position in the gears list
+                    let gear_pos = check_adj_gear(&data_lines, i, j);
+                    if gear_pos.is_some() {
+                        part_number.has_symbol = true;
+                        let gear_pos = gear_pos.unwrap();
+                        part_number.gearpos = gear_pos;
+                        if !gears_pos.iter().any(|&pos| pos.is_equal(&gear_pos) ) { gears_pos.push(gear_pos) };
+                    }
+                    // If its the end of line and a gear was found form the number and add to list of number
+                    if j == data_lines[i].len()-1 && part_number.has_symbol {
+                        let final_number = part_number.digits.clone().into_iter().fold(0, |acc, n| (acc*10)+n);
+                        numbers_pos.push(NumberPos{ number: final_number, pos: part_number.gearpos });
+                    }
+                },
+                None => {
+                    // If a non number was found check if we were forming a number and add it to list
+                    if part_number.digits.len() > 0 && part_number.has_symbol {
+                        let final_number = part_number.digits.clone().into_iter().fold(0, |acc, n| (acc*10)+n);
+                        numbers_pos.push(NumberPos{ number: final_number, pos: part_number.gearpos });
+                    }
+                    // Clear memory number
+                    part_number.digits.clear();
+                    part_number.has_symbol = false;
+                }
+            }
+        }
+    }
+
+    for pos in gears_pos.iter() {
+        // Foreach gear position, check if at least 2 numbers share it and add the multiplication of the 2 numbers to the final number list
+        let pairs = numbers_pos.iter().filter(|&number| number.pos.is_equal(pos)).collect::<Vec<&NumberPos>>();
+        if pairs.len() == 2 {
+            numbers.push(pairs.iter().fold(1, |a, &&b| a * b.number ));
+        }
+    }
+
+    return numbers;
+}
+
+// Given a 2 dimensional vector and a position, checks all posible adjacent positions for a symbol that doesn't match the list
+fn check_adj_symbol(data_lines: &Vec<Vec<char>>, x: usize, y: usize) -> bool {
+    let non_symbols: Vec<char> = vec!['.','0','1','2','3','4','5','6','7','8','9'];
+
+    if x > 0 && y > 0 && !non_symbols.contains(&data_lines[x-1][y-1]) { return true; }
+    if x > 0 && !non_symbols.contains(&data_lines[x-1][y]) { return true; }
+    if x > 0 && y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x-1][y+1]) { return true; }
+
+    if y > 0 && !non_symbols.contains(&data_lines[x][y-1]) { return true; }
+    if y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x][y+1]) { return true; }
+
+    if x < data_lines.len()-1 && y > 0 && !non_symbols.contains(&data_lines[x+1][y-1]) { return true; }
+    if x < data_lines.len()-1 && !non_symbols.contains(&data_lines[x+1][y]) { return true; }
+    if x < data_lines.len()-1 && y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x+1][y+1]) { return true; }
+
+    return false;
+}
+
+// Given a 2 dimensional vector and a position, checks all posible adjacent positions for a given character, returns the position of the found character or nothing
+fn check_adj_gear(data_lines: &Vec<Vec<char>>, x: usize, y: usize) -> Option<Pos>{
+    let symbol: &char = &'*';
+
+    if x > 0 && y > 0 && &data_lines[x-1][y-1] == symbol { return Some(Pos{ x: x-1, y: y-1}); }
+    if x > 0 && &data_lines[x-1][y] == symbol { return Some(Pos{ x: x-1, y }); }
+    if x > 0 && y < data_lines[x].len()-1 && &data_lines[x-1][y+1] == symbol { return Some(Pos{ x: x-1, y: y+1}); }
+
+    if y > 0 && &data_lines[x][y-1] == symbol { return Some(Pos{ x, y: y-1}); }
+    if y < data_lines[x].len()-1 && &data_lines[x][y+1] == symbol { return Some(Pos{ x, y: y+1}); }
+
+    if x < data_lines.len()-1 && y > 0 && &data_lines[x+1][y-1] == symbol { return Some(Pos{ x: x+1, y: y-1}); }
+    if x < data_lines.len()-1 && &data_lines[x+1][y] == symbol { return Some(Pos{ x: x+1, y}); }
+    if x < data_lines.len()-1 && y < data_lines[x].len()-1 && &data_lines[x+1][y+1] == symbol { return Some(Pos{ x: x+1, y: y+1}); }
+
+    return None;
 }
