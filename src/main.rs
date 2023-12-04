@@ -19,7 +19,7 @@ fn main() {
     println!("Day Two Part One Solution: {:?}", day_two_part_one().iter().sum::<u32>());
     println!("Day Two Part Two Solution: {:?}", day_two_part_two().iter().sum::<u32>());
     println!("Day Three Part One Solution: {:?}", day_three_part_one().iter().sum::<u32>());
-    println!("Day Three Part One Solution: {:?}", day_three_part_two().iter().sum::<u32>());
+    println!("Day Three Part Two Solution: {:?}", day_three_part_two().iter().sum::<u32>());
     println!("Day Four Part One Solution: {:?}", day_four_part_one());
 }
 
