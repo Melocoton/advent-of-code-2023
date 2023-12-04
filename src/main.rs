@@ -9,11 +9,7 @@ struct Pos {
 
 impl Pos {
     fn is_equal(&self, pos: &Pos) -> bool {
-        if self.x == pos.x && self.y == pos.y {
-            true
-        } else {
-            false
-        }
+        if self.x == pos.x && self.y == pos.y { true } else { false }
     }
 }
 
@@ -24,6 +20,7 @@ fn main() {
     println!("Day Two Part Two Solution: {:?}", day_two_part_two().iter().sum::<u32>());
     println!("Day Three Part One Solution: {:?}", day_three_part_one().iter().sum::<u32>());
     println!("Day Three Part One Solution: {:?}", day_three_part_two().iter().sum::<u32>());
+    println!("Day Four Part One Solution: {:?}", day_four_part_one());
 }
 
 fn day_one_part_one() -> i32 {
@@ -208,6 +205,24 @@ fn day_three_part_one() -> Vec<u32> {
         }
     }
 
+    // Given a 2 dimensional vector and a position, checks all posible adjacent positions for a symbol that doesn't match the list
+    fn check_adj_symbol(data_lines: &Vec<Vec<char>>, x: usize, y: usize) -> bool {
+        let non_symbols: Vec<char> = vec!['.','0','1','2','3','4','5','6','7','8','9'];
+
+        if x > 0 && y > 0 && !non_symbols.contains(&data_lines[x-1][y-1]) { return true; }
+        if x > 0 && !non_symbols.contains(&data_lines[x-1][y]) { return true; }
+        if x > 0 && y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x-1][y+1]) { return true; }
+
+        if y > 0 && !non_symbols.contains(&data_lines[x][y-1]) { return true; }
+        if y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x][y+1]) { return true; }
+
+        if x < data_lines.len()-1 && y > 0 && !non_symbols.contains(&data_lines[x+1][y-1]) { return true; }
+        if x < data_lines.len()-1 && !non_symbols.contains(&data_lines[x+1][y]) { return true; }
+        if x < data_lines.len()-1 && y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x+1][y+1]) { return true; }
+
+        return false;
+    }
+
     return numbers;
 }
 
@@ -272,6 +287,24 @@ fn day_three_part_two() -> Vec<u32> {
         }
     }
 
+    // Given a 2 dimensional vector and a position, checks all posible adjacent positions for a given character, returns the position of the found character or nothing
+    fn check_adj_gear(data_lines: &Vec<Vec<char>>, x: usize, y: usize) -> Option<Pos>{
+        let symbol: &char = &'*';
+
+        if x > 0 && y > 0 && &data_lines[x-1][y-1] == symbol { return Some(Pos{ x: x-1, y: y-1}); }
+        if x > 0 && &data_lines[x-1][y] == symbol { return Some(Pos{ x: x-1, y }); }
+        if x > 0 && y < data_lines[x].len()-1 && &data_lines[x-1][y+1] == symbol { return Some(Pos{ x: x-1, y: y+1}); }
+
+        if y > 0 && &data_lines[x][y-1] == symbol { return Some(Pos{ x, y: y-1}); }
+        if y < data_lines[x].len()-1 && &data_lines[x][y+1] == symbol { return Some(Pos{ x, y: y+1}); }
+
+        if x < data_lines.len()-1 && y > 0 && &data_lines[x+1][y-1] == symbol { return Some(Pos{ x: x+1, y: y-1}); }
+        if x < data_lines.len()-1 && &data_lines[x+1][y] == symbol { return Some(Pos{ x: x+1, y}); }
+        if x < data_lines.len()-1 && y < data_lines[x].len()-1 && &data_lines[x+1][y+1] == symbol { return Some(Pos{ x: x+1, y: y+1}); }
+
+        return None;
+    }
+
     for pos in gears_pos.iter() {
         // Foreach gear position, check if at least 2 numbers share it and add the multiplication of the 2 numbers to the final number list
         let pairs = numbers_pos.iter().filter(|&number| number.pos.is_equal(pos)).collect::<Vec<&NumberPos>>();
@@ -283,38 +316,37 @@ fn day_three_part_two() -> Vec<u32> {
     return numbers;
 }
 
-// Given a 2 dimensional vector and a position, checks all posible adjacent positions for a symbol that doesn't match the list
-fn check_adj_symbol(data_lines: &Vec<Vec<char>>, x: usize, y: usize) -> bool {
-    let non_symbols: Vec<char> = vec!['.','0','1','2','3','4','5','6','7','8','9'];
+fn day_four_part_one() -> u32 {
+    #[derive(Debug)]
+    struct Card {
+        winning_numbers: Vec<u32>,
+        numbers: Vec<u32>
+    }
 
-    if x > 0 && y > 0 && !non_symbols.contains(&data_lines[x-1][y-1]) { return true; }
-    if x > 0 && !non_symbols.contains(&data_lines[x-1][y]) { return true; }
-    if x > 0 && y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x-1][y+1]) { return true; }
+    let data = fs::read_to_string("C:\\Users\\oscar\\Documents\\repo\\Rust\\advent-of-code\\src\\input_d4.txt").expect("error reading file");
+    let data_lines = data.split("\n").map(|line| line.trim()).collect::<Vec<&str>>();
+    let mut cards: Vec<Card> = vec![];
 
-    if y > 0 && !non_symbols.contains(&data_lines[x][y-1]) { return true; }
-    if y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x][y+1]) { return true; }
+    for line in data_lines.iter() {
+        let winning_numbers = parse_line(&line.substring(line.find(':').unwrap()+1, line.find('|').unwrap()));
+        let numbers = parse_line(&line.substring(line.find('|').unwrap()+1, line.len()).trim());
+        cards.push(Card{winning_numbers, numbers});
+    }
 
-    if x < data_lines.len()-1 && y > 0 && !non_symbols.contains(&data_lines[x+1][y-1]) { return true; }
-    if x < data_lines.len()-1 && !non_symbols.contains(&data_lines[x+1][y]) { return true; }
-    if x < data_lines.len()-1 && y < data_lines[x].len()-1 && !non_symbols.contains(&data_lines[x+1][y+1]) { return true; }
+    fn parse_line(substring: &str) -> Vec<u32> {
+        substring
+            .split(' ') // Split string over whitespaces
+            .filter(|n| n != &"") // Remove unwanted empty strings
+            .map(|n| n.parse::<u32>().unwrap()) // Parse remaining strings as numbers
+            .collect::<Vec<u32>>()
+    }
 
-    return false;
-}
+    let mut total: u32 = 0;
+    for card in cards.iter() {
+        // Foreach card, filter the winning numbers and calculate the total amount of points
+        let numbers = card.numbers.iter().filter(|n| card.winning_numbers.contains(n)).collect::<Vec<&u32>>().len();
+        total += if numbers > 0 { u32::pow(2, (numbers - 1) as u32) } else { 0 };
+    }
 
-// Given a 2 dimensional vector and a position, checks all posible adjacent positions for a given character, returns the position of the found character or nothing
-fn check_adj_gear(data_lines: &Vec<Vec<char>>, x: usize, y: usize) -> Option<Pos>{
-    let symbol: &char = &'*';
-
-    if x > 0 && y > 0 && &data_lines[x-1][y-1] == symbol { return Some(Pos{ x: x-1, y: y-1}); }
-    if x > 0 && &data_lines[x-1][y] == symbol { return Some(Pos{ x: x-1, y }); }
-    if x > 0 && y < data_lines[x].len()-1 && &data_lines[x-1][y+1] == symbol { return Some(Pos{ x: x-1, y: y+1}); }
-
-    if y > 0 && &data_lines[x][y-1] == symbol { return Some(Pos{ x, y: y-1}); }
-    if y < data_lines[x].len()-1 && &data_lines[x][y+1] == symbol { return Some(Pos{ x, y: y+1}); }
-
-    if x < data_lines.len()-1 && y > 0 && &data_lines[x+1][y-1] == symbol { return Some(Pos{ x: x+1, y: y-1}); }
-    if x < data_lines.len()-1 && &data_lines[x+1][y] == symbol { return Some(Pos{ x: x+1, y}); }
-    if x < data_lines.len()-1 && y < data_lines[x].len()-1 && &data_lines[x+1][y+1] == symbol { return Some(Pos{ x: x+1, y: y+1}); }
-
-    return None;
+    return total;
 }
